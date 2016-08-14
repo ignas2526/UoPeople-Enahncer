@@ -532,7 +532,11 @@ function check_login_uopeople()
  */
 function log_in_patch_sesskey(sesskey)
 {
-    M.cfg.sesskey = sesskey;
+    if (typeof window.M != 'undefined') {
+        window.M.cfg.sesskey = sesskey;
+    } else if (typeof unsafeWindow.M != 'undefined') {
+        unsafeWindow.M.cfg.sesskey = sesskey;
+    }
     var el = document.querySelectorAll('input[name="sesskey"]');
     for (var i = 0; i < el.length; i++) {
         el[i].value = sesskey;
