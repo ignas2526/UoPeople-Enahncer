@@ -613,7 +613,7 @@ function grammarly_find_value(group, category, obj)
     for (var i = 0; i < obj.length; i++) {
         if (obj[i].group == group && obj[i].category == category) return obj[i].count;
     }
-    return 1;
+    return 0;
 }
 
 var grammarly_check_values = [{
