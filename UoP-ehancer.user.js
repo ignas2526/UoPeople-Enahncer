@@ -12,8 +12,8 @@
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @run-at document-start
-// @downloadURL https://gist.github.com/Ignas2526/21e2b16c6e32365140c0e85228691ee1/raw/96d437f716727a74721b7d7464967fac21afa8ca/UoP-ehancer.user.js
-// @updateURL https://gist.github.com/Ignas2526/b8bb3b5c5aa32fd808187866213f350a/raw/68e09b7dec37a0bae49ac59fda90942b00a86faa/UoP-ehancer.meta.js
+// @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
+// @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
 // ==/UserScript==
 
 /*
@@ -40,6 +40,7 @@
  * More detailed log-In messages
  * Added sesskey patching
  * Improved Grammarly responce displaying
+ * Added Automatic Update support
  *
  * 0.0.1 2016.08.12
  * Initial realease 
