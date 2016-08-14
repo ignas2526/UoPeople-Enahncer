@@ -1,5 +1,4 @@
 // ==UserScript==
-// ==UserScript==
 // @name        UoPeople Moodle enhancer
 // @author      Ignas Poklad (Ignas2526)
 // @namespace   ignas2526_uopeople_moodle_enhancer
@@ -12,7 +11,7 @@
 // @grant       GM_addStyle
 // @grant       GM_setValue
 // @grant       GM_getValue
-// @run-at document-start
+// @run-at      document-start
 // @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
 // @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
 // ==/UserScript==
