@@ -1,19 +1,22 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name        UoPeople Moodle enhancer
 // @author      Ignas Poklad (Ignas2526)
 // @namespace   ignas2526_uopeople_moodle_enhancer
 // @description Enhances UoPeople Moodle
+// @version     0.1.0
+// @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
+// @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
+// @run-at document-start
 // @include     http://my.uopeople.edu/*
 // @include     https://my.uopeople.edu/*
-// @version     0.0.2
+// @connect     my.uopeople.edu
+// @connect     capi.grammarly.com
+// @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_log
 // @grant       GM_addStyle
 // @grant       GM_setValue
 // @grant       GM_getValue
-// @run-at document-start
-// @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
-// @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
 // ==/UserScript==
 
 /*
@@ -34,12 +37,18 @@
 
 /*
  * Changelog
+ * 0.1.0 2016.08.18
+ * Added Events window
+ * Last 2 week's forums are ebedded into the main course page
+ * Possibly logged-out message is now shown after 2 hours of inactivity.
+ * Possibly logged-out message now tells how much time had passed.
+ * Other minor script improvements
  *
- * 0.0.2 2016.08.xx
+ * 0.0.2 2016.08.14
  * Greatly improved log-in functionality
  * More detailed log-In messages
  * Added sesskey patching
- * Improved Grammarly responce displaying
+ * Improved Grammarly response displaying
  * Added Automatic Update support
  *
  * 0.0.1 2016.08.12
@@ -431,48 +440,133 @@ iWin.messageBox = function(msg, params, _wID)
 	return true;
 };
 
-var v0id = {};
+window.addEventListener('DOMContentLoaded', function()
+{
+	UoPE_menu_init();
+	setTimeout(UoP_cosmetic_improvements, 0);
+	uop_time_init();
 
-v0id.init = function()
+	GM_addStyle(
+		".nse{-moz-user-select:-moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none}"+
+		".winb{overflow:hidden;position:fixed;border:1px solid #003;border-radius:2px;background:#FDFDFD;}"+
+		".winbt{border:solid #003;border-width:0px 0px 1px 0px;font-size:15px;cursor:move}"+
+		".winbt>img{margin:0px 1px -2px 1px;cursor:pointer}"+
+		".winbc{white-space:nowrap;padding:5px}"+
+		".winbt u{text-decoration:none;vertical-align:top;}"
+	);
+	iWin.init();
+
+	log_out_handler_init();
+
+	uop_time_init();
+
+}, 0);
+
+window.onfocus = function()
+{
+  is_possibly_logged_out();
+};
+
+function UoPE_menu_init()
 {
   GM_addStyle(
-    ".v0id_m{position:fixed;margin:0;padding:3px;display:block;top:0;right:0;cursor:pointer;z-index:100;" +
+    "#uope_menu{position:fixed; margin:0; padding:3px; display:block; top:0; right:0; cursor:pointer; z-index:100;" +
     "border-radius:2px;font-size:20px;color:#fff;background:rgba(0,0,0,.7);}" +
-    ".v0id_m > *{cursor:pointer}" +
-    ".v0id_mt{text-align:right}" +
-    ".v0id_mm{display:none}" +
-    ".v0id_m:hover .v0id_mm{display:block;}" +
+    "#uope_menu > *{cursor:pointer}" +
+    ".uope_menu_mt{text-align:right}" +
+    ".uope_menu_mm{display:none}" +
+    "#uope_menu:hover .uope_menu_mm{display:block;}" +
     ".ume-invisible-overlay{position:fixed;width:100%;height:100%;left:0;top:0;}"
   );
-  var omenu = document.createElement('div'); 
-  omenu.className="v0id_m";
-  omenu.innerHTML = '<div class="v0id_mt">UoP Enhancer</div><div class=\"v0id_mm\">'+
-      '<div>Login?</div>'+
-      '<div>Grammarly Checker</div>'+
+  var menu = document.createElement('div'); 
+  menu.id = 'uope_menu';
+  menu.innerHTML = '<div class="uope_menu_mt">UoP Enhancer</div><div class=\"uope_menu_mm\">'+
+      '<div>Log-in</div>'+
+      '<div>Grammarly</div>'+
+      '<div>Events</div>'+
       '<div>Settings</div>'+
       '</div>';
-        /*'<div>Time</div>'+
-      '<div>Notes</div>'+*/
-  document.body.appendChild(omenu);
+      /*'<div>Notes</div>'+*/
+  document.body.appendChild(menu);
   
   // TODO: make this whole thing less ugly.
-  omenu.children[1].children[0].onclick = check_login_uopeople;
-  omenu.children[1].children[1].onclick = open_plagiarism_window;
-  omenu.children[1].children[2].onclick = open_settings_window;
+  menu.children[1].children[0].onclick = do_uop_login;
+  menu.children[1].children[1].onclick = open_grammarly_window;
+  menu.children[1].children[2].onclick = open_events_window;
+  menu.children[1].children[3].onclick = open_settings_window;
 }
 
+function UoP_cosmetic_improvements()
+{
+	/*
+	 * Changes for the main course page
+   	 * http://my.uopeople.edu/course/view.php?id=XXX
+	 */
+	if (top.location.toString().indexOf('course/view.php') != -1) {
+		// Remove big UoP logo at the top
+		var logo_img = document.querySelectorAll('#section-0 .summary img');
+		if (logo_img && logo_img[0]) {
+			logo_img[0].parentElement.removeChild(logo_img[0]);
+		}
+		
+		// Reverse order the weeks so that current week is at the top of the page and so on
+		var sections = [];
+		for (var i = 0; i < 10; i++) {
+			var section = document.getElementById('section-' + i);
+			if (section == null) break;
+			sections[i] = section;
+		}
+
+		if (sections.length > 2) {
+			for (var i = 2; i < sections.length; i++) {
+				sections[0].parentNode.insertBefore(sections[i],sections[i -1]);
+			}
+		}
+
+		// Proper last week: sections[sections.length - 1]
+		// Currently we show for last two weeks
+		for (i = 1; i <= 2; i++) {
+			var latest_week_obj = sections[sections.length - i];
+			var forum_obj = latest_week_obj.querySelectorAll('.forum');
+			// Currently, we support only one forum
+			if (forum_obj && forum_obj[0]) {
+				var href = forum_obj[0].children[0].children[0].children[1].children[0].children[0].href;
+				if (href) {
+					GM_xmlhttpRequest({
+						method: "GET",
+						url: href,
+						onload: function(response) {
+							if (response.responseText) {
+								var forum = response.responseText.match(/<table[\s\S]*<\/table>/)[0];
+								forum = forum.replace(/<td class="picture">.*<\/td>/,'<td> </td>');
+								forum = forum.replace(/<th class="header group" scope="col">Group<\/th>/,'');
+								forum = forum.replace(/<td class="picture group">.*<\/td>/,'');
+								forum_obj[0].innerHTML += forum;
+							}
+						}
+					});
+
+				}
+
+			}
+		}
+		//Technology fails you sometimes. Report to Ignas a bug with forum extraction.
+		
+	}
+}
 /*
  * The functions below deal with UoP log-in
 */
-var log_in_in_process = false; // Prevent parallel log-in
-function check_login_uopeople()
+
+var doing_log_in = false; // Prevent parallel log-in
+function do_uop_login()
 {
   if (!settings.uop_login[0].length || !settings.uop_login.length) {
       iWin.messageBox('You did not provide UoP Enhancer with your UoP username and password.', {title:'Auto Log-In', timeout:5000});
       return;
   }
-  if (log_in_in_process) return;
-  log_in_in_process = true;
+  if (doing_log_in) return;
+  doing_log_in = true;
   var sesskey_patch_success_msg = 'sesskey was found and patched.';
   var sesskey_patch_failure_msg = '<span style="color:red">sesskey was not patched!<br>Back-up form data, if any!</span>';
   GM_xmlhttpRequest({
@@ -500,10 +594,10 @@ function check_login_uopeople()
                     msg += sesskey_patch_failure_msg;
                 }
                 iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
-                log_in_in_process = false;
+                doing_log_in = false;
             } else {
                 iWin.messageBox('<span style="color:red">Failed to log-in!</span>', {title:'Auto Log-In', timeout:5000});
-                log_in_in_process = false;
+                doing_log_in = false;
             }
           }
         });
@@ -517,7 +611,7 @@ function check_login_uopeople()
             msg += sesskey_patch_failure_msg;
         }
         iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
-        log_in_in_process = false;
+        doing_log_in = false;
       }
     }
   });
@@ -533,19 +627,57 @@ function check_login_uopeople()
 function log_in_patch_sesskey(sesskey)
 {
     if (typeof window.M != 'undefined') {
-        window.M.cfg.sesskey = sesskey;
-    } else if (typeof unsafeWindow.M != 'undefined') {
-        unsafeWindow.M.cfg.sesskey = sesskey;
-    }
+		window.M.cfg.sesskey = sesskey;
+	} else if (typeof unsafeWindow.M != 'undefined') {
+		unsafeWindow.M.cfg.sesskey = sesskey;
+	}
     var el = document.querySelectorAll('input[name="sesskey"]');
     for (var i = 0; i < el.length; i++) {
         el[i].value = sesskey;
     }
 }
 
+var possibly_logged_out_after = 120 * 60 * 1000; //2h in milliseconds
+var invisible_overlay_obj = null;
+var time_when_page_loaded = new Date().getTime(); // Unix timestamp
 
+function log_out_handler_init()
+{
+  invisible_overlay_obj = document.createElement('div');
+  invisible_overlay_obj.className = 'ume-invisible-overlay';
+  invisible_overlay_obj.style.display = 'none';
+  invisible_overlay_obj.onclick = show_possibly_logged_out_warning;
+  document.body.appendChild(invisible_overlay_obj);
+}
 
-function open_plagiarism_window()
+function show_possibly_logged_out_warning()
+{
+  invisible_overlay_obj.style.display = 'none';
+  var wID = 'inactivityWarn';
+  iWin.create({title: 'Warning', onclose:function(){iWin.destroy(wID);}}, wID);
+  iWin.setContent('You had this page open for ' + format_time_period(new Date().getTime() - time_when_page_loaded, false) + '.<br>'+
+                  'If you are writting a comment, learning journal entry or assignmnet,<br>'+
+                  'back it up before clicking submit or navigating to other page.', true, wID);
+  iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
+
+  iWin.show(wID);
+  time_when_page_loaded = new Date().getTime();
+}
+
+function is_possibly_logged_out()
+{
+    var inactive_for = new Date().getTime() - time_when_page_loaded;
+    // If page was loaded for less than hour, we are should still be logged in.
+    if (inactive_for < possibly_logged_out_after) return;
+
+    invisible_overlay_obj.style.display = 'block';
+}
+
+setTimeout(function(){
+  is_possibly_logged_out();
+}, possibly_logged_out_after);
+
+function open_grammarly_window()
 {
   var wID = 'grammarlyWindowID';
   var window_exists = !iWin.create({title: 'Grammarly Text Check', onclose:function(){iWin.destroy(wID);}}, wID);
@@ -617,7 +749,7 @@ function grammarly_find_value(group, category, obj)
     for (var i = 0; i < obj.length; i++) {
         if (obj[i].group == group && obj[i].category == category) return obj[i].count;
     }
-    return 0;
+    return 1;
 }
 
 var grammarly_check_values = [{
@@ -688,103 +820,6 @@ var grammarly_check_values = [{
     ]
 }];
 
-window.addEventListener('DOMContentLoaded', function()
-{
-  v0id.init();
-  
-  GM_addStyle(
-    ".nse{-moz-user-select:-moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none}"+
-    ".winb{overflow:hidden;position:fixed;border:1px solid #003;border-radius:2px;background:#FDFDFD;}"+
-    ".winbt{border:solid #003;border-width:0px 0px 1px 0px;font-size:15px;cursor:move}"+
-    ".winbt>img{margin:0px 1px -2px 1px;cursor:pointer}"+
-    ".winbc{white-space:nowrap;padding:5px}"+
-    ".winbt u{text-decoration:none;vertical-align:top;}"
-  );
-  iWin.init();
-  
-  log_out_handler_init();
-  
-  /*
-   * Reorder the course assignment on the main course page so that current week is at the top of the page
-   * Also remove the big logo
-   * http://my.uopeople.edu/course/view.php?id=XXX
-   */
-  if (top.location.toString().indexOf('course/view.php')) {
-    var sections = [];
-    for (var i = 0; i < 10; i++) {
-      var section = document.getElementById('section-' + i);
-      if (section == null) break;
-      sections[i] = section;
-    }
-
-    if (sections.length > 2) {
-     for (var i = 2; i < sections.length; i++) {
-       sections[0].parentNode.insertBefore(sections[i],sections[i -1]);
-     }
-    }
-    
-    
-    //Remove logo
-    var logo_img = document.querySelectorAll('#section-0 .summary img');
-    if (logo_img && logo_img[0]) {
-      logo_img[0].parentElement.removeChild(logo_img[0]);
-    }
-  }
-}, 0);
-
-
-window.onbeforeunload = function ()
-{
-  return null;
-};
-
-var possibly_logged_out_after = 90 * 60; //1h 30min in seconds
-var invisible_overlay = null;
-var time_when_page_loaded = new Date().getTime()/1000; // Unix timestamp
-
-function log_out_handler_init()
-{
-  invisible_overlay = document.createElement('div');
-  invisible_overlay.className = 'ume-invisible-overlay';
-  invisible_overlay.style.display = 'none';
-  invisible_overlay.onclick = show_possibly_logged_out_warning;
-  document.body.appendChild(invisible_overlay);
-}
-
-function show_possibly_logged_out_warning()
-{
-  invisible_overlay.style.display = 'none';
-  time_when_page_loaded = new Date().getTime()/1000;
-  
-  var wID = 'inactivityWarn';
-  iWin.create({title: 'Warning', onclose:function(){iWin.destroy(wID);}}, wID);
-  iWin.setContent('You had this page open for more than 1h and 30min.<br>'+
-                  'If you are writting a comment, learning journal entry or assignmnet,<br>'+
-                  'back it up before clicking submit or navigating to other page.', true, wID);
-  iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
-
-  iWin.show(wID);
-}
-
-function is_possibly_logged_out()
-{
-    var current_time = new Date().getTime()/1000;
-    
-    // If page was loaded for less than hour, we are should still be logged in.
-    if ((current_time - time_when_page_loaded) < possibly_logged_out_after) return;
-
-    invisible_overlay.style.display = 'block';
-}
-
-window.onfocus = function()
-{
-  is_possibly_logged_out();
-}
-
-setTimeout(function(){
-  is_possibly_logged_out();
-}, possibly_logged_out_after * 1000);
-
 var settings = null;
 
 {
@@ -795,11 +830,12 @@ var settings = null;
     }
     } catch(e){}
     if (settings == null)
-       settings = {}; 
+       settings = {};
     if (!settings.uop_login || settings.uop_login.length != 2) {
         settings.uop_login = ['', ''];
     }
 }
+
 function open_settings_window() {
   var wID = 'UoPE-Settings';
   iWin.create({title: 'UoP Enhancer Settings', onclose:function(){iWin.destroy(wID);}}, wID);
@@ -827,4 +863,98 @@ function settings_save() {
     var settings_string = JSON.stringify(settings);
     GM_setValue('settings', settings_string);
     iWin.hide(wID);
+}
+
+/*
+ * Get Timzeone Info from Google API. One love Google!
+ */
+// Mentioned many times throughout the Student Handbook, UoP Time is (GMT -5)
+var uop_time_sec_offset = -5 * 60 * 60;
+function uop_time_init()
+{
+    var uop_date = new Date();
+    uop_date.setTime(uop_date.getTime() + uop_date.getTimezoneOffset() * 60000 + uop_time_sec_offset * 1000);
+    console.log(uop_date);
+    
+    // Generate events
+    for (var t = 0; t < uop_terms.length; t++) {
+        var week_beginning = new Date(uop_terms[t][1]);
+        // Subtract timezone offset and add 5 min, since week starts 5 min after day had started
+        week_beginning.setTime(week_beginning.getTime() + week_beginning.getTimezoneOffset() * 60000 + (5 * 60) * 1000);
+        for (var w = 0; w < 8; w++) {
+            uop_events.push(['Term '+ uop_terms[t][0] + ' Week '+ (w + 1) + ' Starts', new Date(week_beginning.getTime())]);
+            // Week ends 5min before the beginning of the next week's day
+            week_beginning.setTime(week_beginning.getTime() + (6 * 24 * 60 * 60) * 1000 + (23 * 60 * 60) * 1000 + (50 * 60) * 1000);
+            uop_events.push(['Term '+ uop_terms[t][0] + ' Week '+ (w + 1) + ' Ends', new Date(week_beginning.getTime())]);
+            week_beginning.setTime(week_beginning.getTime() + (10 * 60) * 1000);
+        }
+        uop_events.push(['Term '+ uop_terms[t][0] + ' Exam Starts', new Date(week_beginning.getTime())]);
+        week_beginning.setTime(week_beginning.getTime() + (3 * 24 * 60 * 60) * 1000 + (23 * 60 * 60) * 1000 + (50 * 60) * 1000);
+        uop_events.push(['Term '+ uop_terms[t][0] + ' Exam Ends', new Date(week_beginning.getTime())]);
+    }
+    
+	/*for (var i = 0; i < uop_events.length; i++) {
+        console.log(uop_events[i][0], uop_events[i][1]);
+    }*/
+}
+
+var uop_terms = [[5, '2016-06-16'], [1, '2016-09-01'], [2, '2016-11-10']] , uop_events = [];
+
+var time_window_interval;
+function format_time_period(time, color = true)
+{
+    // convert milliseconds into seconds
+    time = Math.ceil(time / 1000);
+    
+    var s, m, h, d;
+    s = time % 60; time = (time - s) / 60;
+    m = time % 60; time = (time - m) / 60;
+    h = time % 24; time = (time - h) / 24;
+    d = time;
+	
+    if (d) {
+        h = Math.round(h + m / 60 + s / 60 / 60);
+        if (h == 24) {d++; h = 0;}
+        return d + ' days ' + h + ' hours';
+    } else if (h) {
+        m = Math.round(m + s / 60);
+        if (m == 60) {h++; m = 0;}
+        return (color ? '<span style="color:#DD0">' : '') + h + ' hours ' + m + ' min' + (color ? '</span>' : '');
+    } else {
+        return (color ? '<span style="color:#D00">' : '') + m + ' min ' + s + 'sec' + (color ? '</span>' : '');
+    }
+}
+function time_window_output_date(date)
+{
+    return date.getFullYear() + ' ' + (date.getMonth() + 1) + ' ' + date.getDate() + ' ' + date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+}
+function time_window_update()
+{
+    var plan = '';
+    var uop_time_current = new Date();
+    uop_time_current.setTime(uop_time_current.getTime() + uop_time_current.getTimezoneOffset() * 60000 + uop_time_sec_offset * 1000);
+    
+    for (var i = uop_events.length - 1; i > -1; i--) {
+        if (uop_events[i][1].getTime() < uop_time_current.getTime()) {
+            plan += uop_events[i][0] + '   ' + time_window_output_date(uop_events[i][1]) + '<br>';
+            plan += 'Current UoP time: ' + time_window_output_date(uop_time_current) + '<br>';
+            if ((i + 1) < uop_events.length) {
+                i++;
+                plan += uop_events[i][0] + '   ' + time_window_output_date(uop_events[i][1]) + '  in ' + format_time_period(uop_events[i][1] - uop_time_current.getTime()) + '<br>';
+            }
+            break;
+        }
+    }
+    
+    var plan_obj = document.getElementById('uope-time-plan').innerHTML = plan;
+}
+function open_events_window()
+{
+  var wID = 'UoPE-Events';
+  iWin.create({title: 'Events', onclose:function(){window.clearInterval(time_window_interval);iWin.destroy(wID);}}, wID);
+  iWin.setContent('<div id="uope-time-plan" style="min-width:400px;min-height:50px"></div>', true, wID);
+  iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
+  time_window_update();
+  time_window_interval = window.setInterval(time_window_update, 1000);
+  iWin.show(wID);
 }
