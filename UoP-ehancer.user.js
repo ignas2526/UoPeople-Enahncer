@@ -3,7 +3,7 @@
 // @author      Ignas Poklad (Ignas2526)
 // @namespace   ignas2526_uopeople_moodle_enhancer
 // @description Enhances UoPeople Moodle
-// @version     0.1.0
+// @version     0.2.0
 // @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
 // @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
 // @run-at document-start
@@ -37,12 +37,18 @@
 
 /*
  * Changelog
+ * 0.2.0 2016.08.31
+ * Added Student data in settings.
+ * Current courses will be shown at the top of the menu.
+ * Better request error handling in the Log-In and Gramarly.
+ * Other minor imporovements.
+ * 
  * 0.1.0 2016.08.18
  * Added Events window
- * Last 2 week's forums are ebedded into the main course page
+ * Last 2 week's forums are embedded into the main course page
  * Possibly logged-out message is now shown after 2 hours of inactivity.
  * Possibly logged-out message now tells how much time had passed.
- * Other minor script improvements
+ * Other minor script improvements.
  *
  * 0.0.2 2016.08.14
  * Greatly improved log-in functionality
@@ -58,22 +64,6 @@
 /*
  * TODO
  * ADD https://www.paperrater.com/plagiarism_checker
-function callback(e) {
-    var e = window.e || e;
-
-    if (e.target.tagName !== 'A')
-        return;
-
-    // Do something
-}
-
-if (document.addEventListener)
-    document.addEventListener('click', callback, false);
-else
-    document.attachEvent('onclick', callback);
-
-Sync clock to UoPeople one. Chicago Illinois
-https://maps.googleapis.com/maps/api/timezone/json?location=41.8337329,-87.7321555&timestamp=1433848622
 */
 
 /*
@@ -122,7 +112,7 @@ iWin.init = function()
 	document.body.appendChild(tmpDiv);
 	iWin.scroll_length = tmpDiv.offsetWidth - tmpDiv.clientWidth;
 	document.body.removeChild(tmpDiv);
-}
+};
 
 iWin.create = function(param, wID)
 {
@@ -297,13 +287,22 @@ iWin.showTab = function(tID, wID)
 
 iWin.setTabs = function(tabs, wID)
 {
-	var html = '', first = '';
+	var first = '';
+	iWin.win[wID].obj.children[1].innerHTML = '';
 	for (var id in tabs) {
+		if (typeof(id) == 'undefined') continue;
+		
 		if (!first.length) {first = id;}
-		html += '<div class="winbbt" onclick="iWin.showTab(\'' + id + '\',\'' + wID + '\')">' + tabs[id] + '</div>';
+		
+		var obj = document.createElement('div');
+		obj.className = 'winbbt';
+		(function(id, wID){obj.onclick = function(){iWin.showTab(id, wID);};})(id, wID);
+		obj.innerHTML = tabs[id];
+		
+		iWin.win[wID].obj.children[1].appendChild(obj);
 	}
-	if (html != '') {
-		iWin.win[wID].obj.children[1].innerHTML = html;
+	
+	if (first.length) {
 		iWin.win[wID].obj.children[1].style.display = 'block';
 		iWin.showTab(first, wID);
 	} else {
@@ -449,10 +448,14 @@ window.addEventListener('DOMContentLoaded', function()
 	GM_addStyle(
 		".nse{-moz-user-select:-moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none}"+
 		".winb{overflow:hidden;position:fixed;border:1px solid #003;border-radius:2px;background:#FDFDFD;}"+
-		".winbt{border:solid #003;border-width:0px 0px 1px 0px;font-size:15px;cursor:move}"+
+    	".winbt{display:block;border:solid #003;border-width:0px 0px 1px 0px;font-size:15px;cursor:move}"+
 		".winbt>img{margin:0px 1px -2px 1px;cursor:pointer}"+
-		".winbc{white-space:nowrap;padding:5px}"+
-		".winbt u{text-decoration:none;vertical-align:top;}"
+		".winbb{display:block;border:solid #003;border-width:0px 0px 1px 0px;font-size:15px;}"+
+		".winbbt{display:inline-block;padding:1px 2px;border:solid #003;border-width: 0px 1px 0px 0px;cursor:pointer}"+
+		".winbc{display:block;white-space:nowrap;padding:5px}"+
+		".winbt u{text-decoration:none;vertical-align:top;}"+
+		
+		".winbc h1, .winbc h2, .winbc h3, .winbc h4, .winbc h5, .winbc h6{margin:0;line-height:1.5;}"
 	);
 	iWin.init();
 
@@ -469,31 +472,51 @@ window.onfocus = function()
 
 function UoPE_menu_init()
 {
-  GM_addStyle(
-    "#uope_menu{position:fixed; margin:0; padding:3px; display:block; top:0; right:0; cursor:pointer; z-index:100;" +
-    "border-radius:2px;font-size:20px;color:#fff;background:rgba(0,0,0,.7);}" +
-    "#uope_menu > *{cursor:pointer}" +
-    ".uope_menu_mt{text-align:right}" +
-    ".uope_menu_mm{display:none}" +
-    "#uope_menu:hover .uope_menu_mm{display:block;}" +
-    ".ume-invisible-overlay{position:fixed;width:100%;height:100%;left:0;top:0;}"
-  );
-  var menu = document.createElement('div'); 
-  menu.id = 'uope_menu';
-  menu.innerHTML = '<div class="uope_menu_mt">UoP Enhancer</div><div class=\"uope_menu_mm\">'+
-      '<div>Log-in</div>'+
-      '<div>Grammarly</div>'+
-      '<div>Events</div>'+
-      '<div>Settings</div>'+
-      '</div>';
-      /*'<div>Notes</div>'+*/
-  document.body.appendChild(menu);
-  
-  // TODO: make this whole thing less ugly.
-  menu.children[1].children[0].onclick = do_uop_login;
-  menu.children[1].children[1].onclick = open_grammarly_window;
-  menu.children[1].children[2].onclick = open_events_window;
-  menu.children[1].children[3].onclick = open_settings_window;
+	GM_addStyle(
+		"#uope_menu{position:fixed; margin:0; padding:3px; display:block; top:0; right:0; cursor:pointer; z-index:100;" +
+		"border-radius:2px;font-size:20px;color:#fff;background:rgba(0,0,0,.7);}" +
+		"#uope_menu > *{cursor:pointer}" +
+		".uope_menu_mt{text-align:right}" +
+		".uope_menu_mm{display:none}" +
+		".uope_menu_mm a {display:block; color:#fff}" +
+		"#uope_menu:hover .uope_menu_mm{display:block;}" +
+		".ume-invisible-overlay{position:fixed;width:100%;height:100%;left:0;top:0;}"
+	);
+	var menu = document.createElement('div');
+	menu.id = 'uope_menu';
+	menu.innerHTML = '<div class="uope_menu_mt">UoP Enhancer</div><div class=\"uope_menu_mm\"></div>';
+	document.body.appendChild(menu);
+	
+	var menu_itm;
+	
+	if (settings.student_data.profileId) {
+		for (var i = 0; i < settings.student_data.courses.length; i++) {
+			menu_itm = document.createElement('a');
+			menu_itm.innerText = settings.student_data.courses[i].name;
+			menu_itm.href = 'http://my.uopeople.edu/course/view.php?id='  + settings.student_data.courses[i].id;
+			menu.children[1].appendChild(menu_itm);
+		}
+	}
+	
+	menu_itm = document.createElement('div');
+	menu_itm.innerText = 'Log me in';
+	menu_itm.onclick = do_uop_login;
+	menu.children[1].appendChild(menu_itm);
+	
+	menu_itm = document.createElement('div');
+	menu_itm.innerText = 'Grammarly';
+	menu_itm.onclick = open_grammarly_window;
+	menu.children[1].appendChild(menu_itm);
+	
+	menu_itm = document.createElement('div');
+	menu_itm.innerText = 'Events';
+	menu_itm.onclick = open_events_window;
+	menu.children[1].appendChild(menu_itm);
+	
+	menu_itm = document.createElement('div');
+	menu_itm.innerText = 'Settings';
+	menu_itm.onclick = open_settings_window;
+	menu.children[1].appendChild(menu_itm);
 }
 
 function UoP_cosmetic_improvements()
@@ -550,7 +573,6 @@ function UoP_cosmetic_improvements()
 
 			}
 		}
-		//Technology fails you sometimes. Report to Ignas a bug with forum extraction.
 		
 	}
 }
@@ -558,63 +580,70 @@ function UoP_cosmetic_improvements()
  * The functions below deal with UoP log-in
 */
 
-var doing_log_in = false; // Prevent parallel log-in
+var in_process_login = false; // Prevent parallel log-in
 function do_uop_login()
 {
-  if (!settings.uop_login[0].length || !settings.uop_login.length) {
-      iWin.messageBox('You did not provide UoP Enhancer with your UoP username and password.', {title:'Auto Log-In', timeout:5000});
-      return;
-  }
-  if (doing_log_in) return;
-  doing_log_in = true;
-  var sesskey_patch_success_msg = 'sesskey was found and patched.';
-  var sesskey_patch_failure_msg = '<span style="color:red">sesskey was not patched!<br>Back-up form data, if any!</span>';
-  GM_xmlhttpRequest({
-    method: "GET",
-    url: "http://my.uopeople.edu/",
-    onload: function(response) {
-      if (response.responseText.indexOf('Log in to the site') > 0) {
-          GM_xmlhttpRequest({
-          method: "POST",
-          url: "https://my.uopeople.edu/login/index.php",
-          data: "username=" +settings.uop_login[0]+ "&password=" +settings.uop_login[1]+ "&rememberusername=1",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Referer": "https://my.uopeople.edu/login/index.php"
+	if (in_process_login) return;
+	
+	if (!settings.uop_login[0].length || !settings.uop_login.length) {
+		iWin.messageBox('You did not provide UoP Enhancer with your UoP username and password.', {title:'Auto Log-In', timeout:5000});
+		return;
+	}
+	in_process_login = true;
+	var sesskey_patch_success_msg = 'sesskey was found and patched.';
+	var sesskey_patch_failure_msg = '<span style="color:red">sesskey was not patched!<br>Back-up form data, if any!</span>';
+	GM_xmlhttpRequest({
+		method: "GET",
+		url: "http://my.uopeople.edu/",
+		onload: function(response) {
+			if (response.responseText.indexOf('Log in to the site') > 0) {
+				GM_xmlhttpRequest({
+					method: "POST",
+					url: "https://my.uopeople.edu/login/index.php",
+					data: "username=" +settings.uop_login[0]+ "&password=" +settings.uop_login[1]+ "&rememberusername=1",
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+						"Referer": "https://my.uopeople.edu/login/index.php"
 
-          },
-          onload: function(response) {
-            if (response.responseText.indexOf('Log in to the site') == -1) {
-                var msg = 'Successfully logged in.<br>';
-                var sesskey = response.responseText.match(/"sesskey":"([^"]+)"/);
-                if (sesskey.length == 2) {
-                    log_in_patch_sesskey(sesskey[1]);
-                    msg += sesskey_patch_success_msg;
-                } else {
-                    msg += sesskey_patch_failure_msg;
-                }
-                iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
-                doing_log_in = false;
-            } else {
-                iWin.messageBox('<span style="color:red">Failed to log-in!</span>', {title:'Auto Log-In', timeout:5000});
-                doing_log_in = false;
-            }
-          }
-        });
-      } else {
-        var msg = 'Already logged in.<br>';
-        var sesskey = response.responseText.match(/"sesskey":"([^"]+)"/);
-        if (sesskey.length == 2) {
-            log_in_patch_sesskey(sesskey[1]);
-            msg += sesskey_patch_success_msg;
-        } else {
-            msg += sesskey_patch_failure_msg;
-        }
-        iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
-        doing_log_in = false;
-      }
-    }
-  });
+					},
+					onload: function(response)
+					{
+						if (response.responseText.indexOf('Log in to the site') == -1) {
+							var msg = 'Successfully logged in.<br>';
+							var sesskey = response.responseText.match(/"sesskey":"([^"]+)"/);
+							if (sesskey.length == 2) {
+								log_in_patch_sesskey(sesskey[1]);
+								msg += sesskey_patch_success_msg;
+							} else {
+								msg += sesskey_patch_failure_msg;
+							}
+							iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
+							in_process_login = false;
+						} else {
+							iWin.messageBox('<span style="color:red">Failed to Log-In!</span><br>Unexpected response.', {title:'Auto Log-In', timeout:5000});
+							in_process_login = false;
+						}
+					},
+					onerror: function(response)
+					{
+						iWin.messageBox('<span style="color:red">Failed to Log-In!</span><br>Request error.', {title:'Auto Log-In', timeout:5000});
+						in_process_login = false;
+					}
+				});
+			} else {
+				var msg = 'Already logged in.<br>';
+				var sesskey = response.responseText.match(/"sesskey":"([^"]+)"/);
+				if (sesskey.length == 2) {
+					log_in_patch_sesskey(sesskey[1]);
+					msg += sesskey_patch_success_msg;
+				} else {
+					msg += sesskey_patch_failure_msg;
+				}
+				iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
+				in_process_login = false;
+			}
+		}
+	});
 }
 
 /*
@@ -654,10 +683,13 @@ function show_possibly_logged_out_warning()
 {
   invisible_overlay_obj.style.display = 'none';
   var wID = 'inactivityWarn';
-  iWin.create({title: 'Warning', onclose:function(){iWin.destroy(wID);}}, wID);
-  iWin.setContent('You had this page open for ' + format_time_period(new Date().getTime() - time_when_page_loaded, false) + '.<br>'+
-                  'If you are writting a comment, learning journal entry or assignmnet,<br>'+
-                  'back it up before clicking submit or navigating to other page.', true, wID);
+  iWin.create({title: 'Inactivity Warning', onclose:function(){iWin.destroy(wID);}}, wID);
+  iWin.setContent('You had this page open for ' + format_time_period(new Date().getTime() - time_when_page_loaded, false) + '.<br>' +
+                  'There\'s a chance that Moodle logged you out automatically.<br>' +
+				  'If you are in any form (e.g. learning journal, forum reply, PM),<br>' +
+				  'you should click on "Log me in" in the UoP ehancher menu,<br>' +
+				  'or backup you work and log back in manually,<br>' +
+				  '<b>before</b> you try to submit the form.', true, wID);
   iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
 
   iWin.show(wID);
@@ -692,56 +724,54 @@ function open_grammarly_window()
   }
 }
 
-var grammarly_in_process = false;
+var in_process_grammarly = false;
 function plagiarism_check()
 {
-  if (grammarly_in_process) return;
-  grammarly_in_process = true;
-  data = document.getElementById('plagiarism_check_text').value;
-  GM_xmlhttpRequest({
-    method: "POST",
-    url: "https://capi.grammarly.com/api/check",
-    data: data,
-    headers: {
-      "Content-Type": "text/plain",
-      "Accept": "application/json",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Origin": "https://www.grammarly.com",
-      "Referer": "https://www.grammarly.com/plagiarism?q=plagiarism"
-    },
-    onload: function(response) {
-      /*console.log(
-        response.status,
-        response.statusText,
-        response.readyState,
-        response.responseHeaders,
-        response.responseText,
-        response.finalUrl
-      );*/
+	if (in_process_grammarly) return;
+	in_process_grammarly = true;
 
-      if (response.responseText) {
-        var jsonResp = JSON.parse(response.responseText);
-        var out = '';
-          // TODO: add word count: a.replace(/\W+/g, " ").split(' ').length
-          // TODO: that word count doesn't work with-a-word-like-that
-          // TODO: plagiarsim count is the percentage of the words which are plagiarized
-        var plag_count = grammarly_find_value('Plagiarism', 'Plagiarism', jsonResp);
-        out += '<strong>Plagiarism</strong> ' + plag_count + '% of words<br>';
-        for (var i = 0; i < grammarly_check_values.length; i++) {
-          out += '<strong>' + grammarly_check_values[i].name+ '</strong>';
-          for (var j = 0; j < grammarly_check_values[i].items.length; j++) {
-              var count = grammarly_find_value(grammarly_check_values[i].key, grammarly_check_values[i].items[j].key, jsonResp);
-              if (count) {
-                  out += '&nbsp;&nbsp;' + count + ' ' + grammarly_check_values[i].items[j].name;
-              }
-          }
-          out += '<br>';
-        }
-        document.getElementById('plagiarism_check_responce').innerHTML = out;
-        grammarly_in_process = false;
-      }
-    }
-  });
+	data = document.getElementById('plagiarism_check_text').value;
+	GM_xmlhttpRequest({
+		method: "POST",
+		url: "https://capi.grammarly.com/api/check",
+		data: data,
+		headers: {
+			"Content-Type": "text/plain",
+			"Accept": "application/json",
+			"Accept-Language": "en-US,en;q=0.5",
+			"Origin": "https://www.grammarly.com",
+			"Referer": "https://www.grammarly.com/plagiarism?q=plagiarism"
+		},
+		onload: function(response) {
+			if (response.responseText) {
+				var jsonResp = JSON.parse(response.responseText);
+				var out = '';
+				// TODO: add word count: a.replace(/\W+/g, " ").split(' ').length
+				// TODO: that word count doesn't work with-a-word-like-that
+				var plag_count = grammarly_find_value('Plagiarism', 'Plagiarism', jsonResp);
+				out += '<strong>Plagiarism</strong> ' + plag_count + '% of words<br>';
+				for (var i = 0; i < grammarly_check_values.length; i++) {
+					out += '<strong>' + grammarly_check_values[i].name+ '</strong>';
+					for (var j = 0; j < grammarly_check_values[i].items.length; j++) {
+						var count = grammarly_find_value(grammarly_check_values[i].key, grammarly_check_values[i].items[j].key, jsonResp);
+						if (count) {
+							out += '&nbsp;&nbsp;' + count + ' ' + grammarly_check_values[i].items[j].name;
+						}
+					}
+					out += '<br>';
+				}
+				document.getElementById('plagiarism_check_responce').innerHTML = out;
+			} else {
+				iWin.messageBox('<span style="color:red">Request to Grammarly API had failed</span>', {title:'Grammarly', timeout:5000});
+			}
+			in_process_grammarly = false;
+		},
+		onerror: function(response)
+		{
+			iWin.messageBox('<span style="color:red">Request to Grammarly API had failed</span>', {title:'Grammarly', timeout:5000});
+			in_process_grammarly = false;
+		}
+	});
 }
 
 function grammarly_find_value(group, category, obj)
@@ -749,7 +779,7 @@ function grammarly_find_value(group, category, obj)
     for (var i = 0; i < obj.length; i++) {
         if (obj[i].group == group && obj[i].category == category) return obj[i].count;
     }
-    return 1;
+    return 0;
 }
 
 var grammarly_check_values = [{
@@ -834,26 +864,37 @@ var settings = null;
     if (!settings.uop_login || settings.uop_login.length != 2) {
         settings.uop_login = ['', ''];
     }
+	if (!settings.student_data) {
+		settings.student_data = {};
+		settings.student_data.name = "";
+		settings.student_data.profileId = 0;
+		settings.student_data.courses = [];
+	}
 }
 
-function open_settings_window() {
-  var wID = 'UoPE-Settings';
-  iWin.create({title: 'UoP Enhancer Settings', onclose:function(){iWin.destroy(wID);}}, wID);
-  iWin.setContent('<strong>One-Click Log-In</strong><br>'+
-                  'Warning: do not use this feature on a non-private computer.<br>'+
-                  'Your username and pasword will be stored in the browser.<br>'+
-                  'The creator of this script will take <strong>no responsibility</strong><br>'+
-                  'if something happens to your UoP account!<br>'+
-                  'User: <input id="uope-s-user" type="text"><br>'+
-                  'Pass: <input id="uope-s-pass" type="password"><br>'+
-                  '<input id="uope-s-save" type="button" value="Save">', true, wID);
-  iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
-  iWin.show(wID);
-    
-  document.getElementById('uope-s-save').onclick = settings_save;
+function open_settings_window()
+{
+	var wID = 'UoPE-Settings';
+	iWin.create({title: 'UoP Enhancer Settings', onclose:function(){iWin.destroy(wID);}}, wID);
+	iWin.setContent('<div data-id=\"login\"><strong>One Click Login</strong><br>'+
+					'Warning: do not use this feature on a non-private computer.<br>'+
+					'Your username and pasword will be stored in the browser.<br>'+
+					'The creator of this script will take <strong>no responsibility</strong><br>'+
+					'if something happens to your UoP account!<br>'+
+					'User: <input id="uope-s-user" type="text"><br>'+
+					'Pass: <input id="uope-s-pass" type="password"><br>'+
+					'<input id="uope-s-save" type="button" value="Save"></div>'+
+					'<div data-id=\"student-data\"><input id="uope-s-gather" type="button" value="Gather Student Data"><div id="uope-s-student-data-status"> </div><br><div id="uope-s-student-data" style="width:300px;height:300px"> </div>', true, wID);
+	iWin.setTabs({'login': 'Log-In', 'student-data': 'Student Data'}, wID);
+	iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
+	iWin.show(wID);
+	render_student_data();
+	document.getElementById('uope-s-save').onclick = settings_save;
+	document.getElementById('uope-s-gather').onclick = gather_course_data;
 }
 
-function settings_save() {
+function settings_save()
+{
     var wID = 'UoPE-Settings';
     var uope_user_obj = document.getElementById('uope-s-user');
     var uope_pass_obj = document.getElementById('uope-s-pass');
@@ -865,16 +906,219 @@ function settings_save() {
     iWin.hide(wID);
 }
 
-/*
- * Get Timzeone Info from Google API. One love Google!
- */
+function render_student_data()
+{
+	var obj = document.getElementById('uope-s-student-data');
+	var out = '';
+	out += 'Name: ' + settings.student_data.name + '<br>';
+	out += 'Profile ID: ' + settings.student_data.profileId + '<br>';
+	if (settings.uop_login[0].length)
+		out += 'Student ID: ' + settings.uop_login[0] + '<br>';
+	out += '<h2>Courses</h2>';
+	for (var i = 0;  i < settings.student_data.courses.length; i++) {
+		var instructors_profile_url = 'http://my.uopeople.edu/user/view.php?id=' + settings.student_data.courses[i].instructorId + '&course=' + settings.student_data.courses[i].id;
+		var instructors_pm_url = 'http://my.uopeople.edu/message/index.php?id=' + settings.student_data.courses[i].instructorId + '&viewing=course_' + settings.student_data.courses[i].id;
+		out += '<h3>' + settings.student_data.courses[i].name + '</h3>';
+		out += 'Course ID: ' + settings.student_data.courses[i].id + '<br>';
+		out += 'Group ' + settings.student_data.courses[i].group + '<br>';
+		out += '<h5>Instructor</h5>';
+		out += settings.student_data.courses[i].instructorName + '<br>';
+		out += '<a href="' + instructors_profile_url + '">Profile</a>  ';
+		out += '<a href="' + instructors_pm_url + '">PM</a><br>';
+		out += '<a href="mailto:' + settings.student_data.courses[i].instructorEmail + '">' + settings.student_data.courses[i].instructorEmail + '</a><br>';
+	}
+	document.getElementById('uope-s-student-data').innerHTML = out;
+}
+
+var in_process_gather_student_datagather_course_data_in_process = false;
+function gather_course_data()
+{
+	document.getElementById('uope-s-student-data-status').innerText = 'Gathering Data...';
+	in_process_gather_student_datagather_course_data_in_process = true;
+	gather_course_data_general();
+}
+
+function gather_course_data_general()
+{
+	// Firstly, we scan Moodle homepage for courses
+	GM_xmlhttpRequest({
+		method: "GET",
+		url: 'http://my.uopeople.edu/my/',
+		onload: function(response)
+		{
+			if (!response.responseText) {
+				in_process_gather_student_data = false;
+				return;
+			}
+			// Extract course id and name from the menu
+			// The Online Student Writing Center and Peer Assessment Office will be excluded because their names contain brackets ( and )
+			var courses = response.responseText.match(/:\/\/my.uopeople.edu\/course\/view.php\?id=([\d]*)">([ \dA-Za-z\-,]*)<\/a><li>/g);
+			var course_data = [];
+			for (var i = 0; i < courses.length; i++) {
+				var id = parseInt(courses[i].match(/id=([\d]+)/)[1], 10);
+				var name = courses[i].match(/>([A-Za-z]+ [\d]+)/)[1];
+				settings.student_data.courses.push({id:id, name:name, group:'', instructorId:0, instructorName:'', instructorEmail:'', possibleInstructors:[]});
+			}
+			// Extract student's name and profile id
+			var student = response.responseText.match(/id=([\d]+)" title="View profile">([A-Za-z ]+)<\/a>/);
+			if (student.length == 3) {
+				settings.student_data.name = student[2];
+				settings.student_data.profileId = parseInt(student[1], 10);
+			}
+			gather_course_data_course(0);
+		},
+		onerror: function(response)
+		{
+			iWin.messageBox('<span style="color:red">Failed To gather student data!</span><br>Request to UoP Moodle failed.', {title:'Student Data Gathering Error', timeout:5000});
+			in_process_gather_student_data = false;
+		}
+	});
+}
+
+function gather_course_data_course(i)
+{
+	// Visit Course specific student's profile page to find the group
+	GM_xmlhttpRequest({
+		method: "GET",
+		url: 'http://my.uopeople.edu/user/view.php?id=' + settings.student_data.profile_id + '&course=' + settings.student_data.courses[i].id,
+		onload: function(response) {
+			if (!response.responseText) {
+				in_process_gather_student_data = false;
+				return;
+			}
+			var group = response.responseText.match(/Group ([A-Z])(?:<\/a>)?<\/dd>/);
+			if (group.length == 2) {
+				settings.student_data.courses[i].group = group[1];
+			}
+			if ((i + 1) < settings.student_data.courses.length) {
+				gather_course_data_course(i + 1);
+			} else {
+				gather_course_data_find_possible_instructors(0);
+			}
+		},
+		onerror: function(response)
+		{
+			iWin.messageBox('<span style="color:red">Failed To gather student data!</span><br>Request to UoP Moodle failed.', {title:'Student Data Gathering Error', timeout:5000});
+			in_process_gather_student_data = false;
+		}
+	});
+}
+
+function gather_course_data_find_possible_instructors(course_i)
+{
+	// Visit Course specific student's profile to find group
+	GM_xmlhttpRequest({
+		method: "GET",
+		url: 'http://my.uopeople.edu/user/index.php?roleid=4&id=' + settings.student_data.courses[course_i].id,
+		onload: function(response) {
+			if (!response.responseText) {
+				in_process_gather_student_data = false;
+				return;
+			}
+			gather_course_data_find_user_ids(response.responseText, course_i);
+
+			GM_xmlhttpRequest({
+				method: "GET",
+				url: 'http://my.uopeople.edu/user/index.php?roleid=3&id=' + settings.student_data.courses[course_i].id,
+				onload: function(response) {
+					if (!response.responseText) {
+						in_process_gather_student_data = false;
+						return;
+					}
+					gather_course_data_find_user_ids(response.responseText, course_i);
+
+					if ((course_i + 1) < settings.student_data.courses.length) {
+						gather_course_data_find_possible_instructors(course_i + 1);
+					} else {
+						gather_course_data_find_instructor(0, 0);
+					}
+
+				},
+				onerror: function(response)
+				{
+					iWin.messageBox('<span style="color:red">Failed To gather student data!</span><br>Request to UoP Moodle failed.', {title:'Student Data Gathering Error', timeout:5000});
+					in_process_gather_student_data = false;
+				}
+			});
+		},
+		onerror: function(response)
+		{
+			iWin.messageBox('<span style="color:red">Failed To gather student data!</span><br>Request to UoP Moodle failed.', {title:'Student Data Gathering Error', timeout:5000});
+			in_process_gather_student_data = false;
+		}
+	});
+}
+
+function gather_course_data_find_user_ids(text, course_i)
+{
+	var user_ids_raw = text.match(/:\/\/my.uopeople.edu\/user\/view.php\?id=([\d]+)/g);
+	for (var i = 0; i < user_ids_raw.length; i++) {
+		var user_id = parseInt(user_ids_raw[i].match(/[\d]+/)[0], 10);
+		
+		// Exclude own student's profile id
+		if (user_id == settings.student_data.profileId) continue;
+		
+		if (settings.student_data.courses[course_i].possibleInstructors.indexOf(user_id) == -1)
+			settings.student_data.courses[course_i].possibleInstructors.push(user_id);
+	}
+}
+
+function gather_course_data_find_instructor(course_i, posibleInstructor_i)
+{
+	GM_xmlhttpRequest({
+		method: "GET",
+		url: 'http://my.uopeople.edu/user/view.php?id=' + settings.student_data.courses[course_i].possibleInstructors[posibleInstructor_i] + '&course=' + settings.student_data.courses[course_i].id,
+		onload: function(response) {
+			if (!response.responseText) {
+				in_process_gather_student_data = false;
+				return;
+			}
+				
+			var instructor_group = response.responseText.match(/Group ([A-Z])(?:<\/a>)?<\/dd>/);
+			if (instructor_group.length != 2) {return;}// error
+
+			// If instructor of a course where student is enroled is in the same group as the student, it means that it is this student's instructor
+			if (instructor_group[1] == settings.student_data.courses[course_i].group) {
+				settings.student_data.courses[course_i].instructorId = settings.student_data.courses[course_i].possibleInstructors[posibleInstructor_i];
+				var instructor_name = response.responseText.match(/Personal profile:([ A-Za-z]+)/);
+				// Remove space before and after the name
+				instructor_name = instructor_name[1].substr(1, instructor_name[1].length - 2);
+				var instructor_email = response.responseText.match(/Email address<\/dt><dd><a href="([^"]+)">/);
+				instructor_email = decodeURI(instructor_email[1]);
+				instructor_email = instructor_email.substr(instructor_email.indexOf(':') + 1);
+				settings.student_data.courses[course_i].instructorName = instructor_name;
+				settings.student_data.courses[course_i].instructorEmail = instructor_email;
+
+				if ((course_i + 1) < settings.student_data.courses.length) {
+					gather_course_data_find_instructor(course_i + 1, 0);
+				} else {
+					in_process_gather_student_data = false;
+					var settings_string = JSON.stringify(settings);
+					GM_setValue('settings', settings_string);
+					render_student_data();
+				}
+
+				delete settings.student_data.courses[course_i].possibleInstructors;
+			} else {
+				if ((posibleInstructor_i + 1) < settings.student_data.courses[course_i].possibleInstructors.length) {
+					gather_course_data_find_instructor(course_i, posibleInstructor_i + 1);
+				}
+			}
+		},
+		onerror: function(response)
+		{
+			iWin.messageBox('<span style="color:red">Failed To gather student data!</span><br>Request to UoP Moodle failed.', {title:'Student Data Gathering Error', timeout:5000});
+			in_process_gather_student_data = false;
+		}
+	});
+}
+
 // Mentioned many times throughout the Student Handbook, UoP Time is (GMT -5)
 var uop_time_sec_offset = -5 * 60 * 60;
 function uop_time_init()
 {
     var uop_date = new Date();
     uop_date.setTime(uop_date.getTime() + uop_date.getTimezoneOffset() * 60000 + uop_time_sec_offset * 1000);
-    console.log(uop_date);
     
     // Generate events
     for (var t = 0; t < uop_terms.length; t++) {
@@ -893,9 +1137,6 @@ function uop_time_init()
         uop_events.push(['Term '+ uop_terms[t][0] + ' Exam Ends', new Date(week_beginning.getTime())]);
     }
     
-	/*for (var i = 0; i < uop_events.length; i++) {
-        console.log(uop_events[i][0], uop_events[i][1]);
-    }*/
 }
 
 var uop_terms = [[5, '2016-06-16'], [1, '2016-09-01'], [2, '2016-11-10']] , uop_events = [];
