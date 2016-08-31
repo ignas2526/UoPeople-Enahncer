@@ -1,5 +1,3 @@
-# UoP-Enahncer
-
 UoP Enhancer
 ==============
 UoP Enahncer is script written in JavaScript with a purpose to enhance student's experience while using the University of The people's Moodle. The script relies on the extension Greasemonkey (or Tampermonkey in the Chrome browser) to be added to the Moodle. Once intalled, a small menu will appear in the top-right corner from which some of the script's features can be accessed and confugred.
