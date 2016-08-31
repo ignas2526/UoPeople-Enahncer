@@ -6,7 +6,7 @@ Features
 --------------
 **One Click Login** By clicking on the "Log me in" in the menu, you can Log back into the Moodle with one click. The script not only performs login in the background, but also patches the sesskey on the current page. This allows you to submit current form without getting invalid sesskey error.
 
-**Inactivity Warning** If you stay on the Moodle page for more than 2 hours, a warning will appear if you click anywhere on the page informing you that you might have been logged out automatically. If you left any form, for example learning journal or forum reply for more than two hours, when submitting it, you will loose all your work. After getting this warning and clicking on "Log me in" in the menu, you should be able to submit your work without risking to loose it. Alternatively, you can copy your work somewhere, and login manually.
+**Inactivity Warning** If you stay on the Moodle page for more than 2 hours, a warning will appear if you click anywhere on the page informing you that you might have been logged out automatically. If you indeed were logged out and you have open form, for example learning journal or forum reply, when you submit it, you will loose all your work. After getting this warning and clicking on "Log me in" in the menu, you should be able to submit your work without risking to loose it. Alternatively, you can copy your work somewhere, and login manually.
 
 **Grammarly** You can access Grammarly window anywhere on the Moodle by clicking on "Grammarly" in the UoP Enhancer menu. Here, you can paste the text and check it for plagiarism and grammatical issues using grammarly.com API.
 
