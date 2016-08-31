@@ -3,7 +3,7 @@
 // @author      Ignas Poklad (Ignas2526)
 // @namespace   ignas2526_uopeople_moodle_enhancer
 // @description Enhances UoPeople Moodle
-// @version     0.1.0
+// @version     0.2.0
 // @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
 // @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
 // @run-at document-start
