@@ -3,7 +3,7 @@
 // @author      Ignas Poklad (Ignas2526)
 // @namespace   ignas2526_uopeople_moodle_enhancer
 // @description Enhances UoPeople Moodle
-// @version     0.2.0
+// @version     0.3.0
 // @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
 // @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
 // @run-at document-start
@@ -11,12 +11,14 @@
 // @include     https://my.uopeople.edu/*
 // @connect     my.uopeople.edu
 // @connect     capi.grammarly.com
+// @connect     paperrater.com
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_log
 // @grant       GM_addStyle
 // @grant       GM_setValue
 // @grant       GM_getValue
+// @grant       GM_openInTab
 // ==/UserScript==
 
 /*
@@ -37,15 +39,23 @@
 
 /*
  * Changelog
+ * 0.3.0 2016.
+ * Added PaperRater.
+ * Fixes in Student Data gathering.
+ * Fixes and visual improvements in embedded Forums.
+ * Inactivity alert will not show up after 2 hours and 30 minutes instead of 2 hours.
+ * One click login now properly handles bad responces like those during Moodle maintenance.
+ * Other minor improvements.
+ *
  * 0.2.0 2016.08.31
  * Added Student data in settings.
  * Current courses will be shown at the top of the menu.
  * Better request error handling in the Log-In and Gramarly.
- * Other minor imporovements.
+ * Other minor improvements.
  * 
  * 0.1.0 2016.08.18
  * Added Events window
- * Last 2 week's forums are embedded into the main course page
+ * Last 2 week's forums are embedded into the main course page.
  * Possibly logged-out message is now shown after 2 hours of inactivity.
  * Possibly logged-out message now tells how much time had passed.
  * Other minor script improvements.
@@ -64,6 +74,7 @@
 /*
  * TODO
  * ADD https://www.paperrater.com/plagiarism_checker
+ http://paperrater.com/free_paper_grader
 */
 
 /*
@@ -509,6 +520,11 @@ function UoPE_menu_init()
 	menu.children[1].appendChild(menu_itm);
 	
 	menu_itm = document.createElement('div');
+	menu_itm.innerText = 'Paperrater';
+	menu_itm.onclick = open_paperrater_window;
+	menu.children[1].appendChild(menu_itm);
+	
+	menu_itm = document.createElement('div');
 	menu_itm.innerText = 'Events';
 	menu_itm.onclick = open_events_window;
 	menu.children[1].appendChild(menu_itm);
@@ -526,6 +542,8 @@ function UoP_cosmetic_improvements()
    	 * http://my.uopeople.edu/course/view.php?id=XXX
 	 */
 	if (top.location.toString().indexOf('course/view.php') != -1) {
+		GM_addStyle('.forumheaderlist thead,.forumheaderlist{border:1px solid black;width:100%}td .unread{margin:0 !important} .author,.replies,.lastpost{text-align:center}');
+		
 		// Remove big UoP logo at the top
 		var logo_img = document.querySelectorAll('#section-0 .summary img');
 		if (logo_img && logo_img[0]) {
@@ -548,29 +566,33 @@ function UoP_cosmetic_improvements()
 
 		// Proper last week: sections[sections.length - 1]
 		// Currently we show for last two weeks
-		for (i = 1; i <= 2; i++) {
-			var latest_week_obj = sections[sections.length - i];
+		var limit = sections.length > 2 ? sections.length - 2 : sections.length - 1;
+		for (i = sections.length; i >= limit; i--) {
+			console.log(i % sections.length);
+			var latest_week_obj = sections[i % sections.length];
 			var forum_obj = latest_week_obj.querySelectorAll('.forum');
-			// Currently, we support only one forum
-			if (forum_obj && forum_obj[0]) {
-				var href = forum_obj[0].children[0].children[0].children[1].children[0].children[0].href;
-				if (href) {
+			for (var j = 0; j < forum_obj.length; j++) {
+				var href = forum_obj[j].children[0].children[0].children[1].children[0].children[0].href;
+				if (!href) continue;
+				(function(j, href,forum_obj){
 					GM_xmlhttpRequest({
 						method: "GET",
 						url: href,
 						onload: function(response) {
 							if (response.responseText) {
-								var forum = response.responseText.match(/<table[\s\S]*<\/table>/)[0];
-								forum = forum.replace(/<td class="picture">.*<\/td>/,'<td> </td>');
-								forum = forum.replace(/<th class="header group" scope="col">Group<\/th>/,'');
-								forum = forum.replace(/<td class="picture group">.*<\/td>/,'');
-								forum_obj[0].innerHTML += forum;
+								var forum = response.responseText.match(/<table[\s\S]*<\/table>/);
+								if (forum !== null) {
+									forum = forum[0].replace(/<td class="picture">.*<\/td>/gi, '<td> </td>');
+									forum = forum.replace(/<th class="header group" scope="col">Group<\/th>/gi, '');
+									forum = forum.replace(/<td class="picture group">.*<\/td>/gi, '');
+									forum = forum.replace(/<a href="([^"]*)">.*\(Instructor\)/gi, '<a href="$1">(Instructor)');
+									forum_obj[j].innerHTML += forum;
+								}
+
 							}
 						}
 					});
-
-				}
-
+				})(j, href,forum_obj);
 			}
 		}
 		
@@ -596,7 +618,7 @@ function do_uop_login()
 		method: "GET",
 		url: "http://my.uopeople.edu/",
 		onload: function(response) {
-			if (response.responseText.indexOf('Log in to the site') > 0) {
+			if (response.responseText.indexOf('Log in to the site') != -1) {
 				GM_xmlhttpRequest({
 					method: "POST",
 					url: "https://my.uopeople.edu/login/index.php",
@@ -608,7 +630,7 @@ function do_uop_login()
 					},
 					onload: function(response)
 					{
-						if (response.responseText.indexOf('Log in to the site') == -1) {
+						if (response.responseText.indexOf('You are logged in as') != -1) {
 							var msg = 'Successfully logged in.<br>';
 							var sesskey = response.responseText.match(/"sesskey":"([^"]+)"/);
 							if (sesskey.length == 2) {
@@ -620,7 +642,7 @@ function do_uop_login()
 							iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
 							in_process_login = false;
 						} else {
-							iWin.messageBox('<span style="color:red">Failed to Log-In!</span><br>Unexpected response.', {title:'Auto Log-In', timeout:5000});
+							iWin.messageBox('<span style="color:red">Error:</span> Moodle returned weird responce.<br>Perhaps there\'s maintenance?', {title:'Auto Log-In'});
 							in_process_login = false;
 						}
 					},
@@ -630,16 +652,19 @@ function do_uop_login()
 						in_process_login = false;
 					}
 				});
-			} else {
+			} else if (response.responseText.indexOf('You are logged in as') != -1) {
 				var msg = 'Already logged in.<br>';
 				var sesskey = response.responseText.match(/"sesskey":"([^"]+)"/);
-				if (sesskey.length == 2) {
+				if (sesskey !== null && sesskey.length == 2) {
 					log_in_patch_sesskey(sesskey[1]);
 					msg += sesskey_patch_success_msg;
 				} else {
 					msg += sesskey_patch_failure_msg;
 				}
 				iWin.messageBox(msg, {title:'Auto Log-In', timeout:5000});
+				in_process_login = false;
+			} else {
+				iWin.messageBox('<span style="color:red">Error:</span> Moodle returned weird responce.<br>Perhaps there\'s maintenance?', {title:'Auto Log-In'});
 				in_process_login = false;
 			}
 		}
@@ -666,7 +691,7 @@ function log_in_patch_sesskey(sesskey)
     }
 }
 
-var possibly_logged_out_after = 120 * 60 * 1000; //2h in milliseconds
+var possibly_logged_out_after = (2 * 60 + 30) * 60 * 1000; //2h 30min in milliseconds
 var invisible_overlay_obj = null;
 var time_when_page_loaded = new Date().getTime(); // Unix timestamp
 
@@ -850,6 +875,133 @@ var grammarly_check_values = [{
     ]
 }];
 
+/*
+ * Paper Rater functions
+ */
+
+function open_paperrater_window()
+{
+  var wID = 'paperraterWindowID';
+  var window_exists = !iWin.create({title: 'PaperRater Check', onclose:function(){iWin.destroy(wID);}}, wID);
+  iWin.setContent('<textarea rows="8" cols="50" id="paperrater-text"></textarea><br>' +
+                  '<input type="button" id="paperrater-analyze" value="Check">', true, wID);
+  iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
+
+  iWin.show(wID);
+  if (!window_exists) {
+    document.getElementById('paperrater-analyze').onclick = plagiarism_check;
+  }
+}
+
+var in_process_paperrater = false;
+function plagiarism_check()
+{
+	if (in_process_paperrater) return;
+	in_process_paperrater = true;
+
+	GM_xmlhttpRequest({
+		method: "GET",
+		url: "http://paperrater.com/free_paper_grader",
+		headers: {
+			"Accept-Language": "en-US,en;q=0.8",
+			"Origin": "http://paperrater.com",
+		},
+		onload: function(response) {
+			if (response.responseText) {
+				var csrf_token = response.responseText.match(/name="authenticity_token" type="hidden" value="([^"]*)"/);
+				if (csrf_token.length != 2) {
+					iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+					in_process_paperrater = false;
+					return;
+				}
+				csrf_token = csrf_token[1];
+				console.log(csrf_token);
+				data = document.getElementById('paperrater-text').value;
+				GM_xmlhttpRequest({
+					method: "POST",
+					url: 'http://paperrater.com/site/submit_paper',
+					// %5B is [ %5D is ]
+					data: 'utf8=%E2%9C%93' +
+					'&authenticity_token=' + encodeURIComponent(csrf_token) + 
+					'&submission%5Bpaper%5D=' + encodeURIComponent(data) +
+					'&submission%5Bworks_cited%5D=' +
+					'&submission%5Beducation_level%5D=14' +
+					'&submission%5Bpaper_type%5D=' +
+					'&submission%5Boriginality_option%5D=skip' +
+					'&terms=on',
+					headers: {
+						'Accept':'*/*;q=0.5, text/javascript, application/javascript, application/ecmascript, application/x-ecmascript',
+						'Content-Type':'application/x-www-form-urlencoded',
+						'Origin':'http://paperrater.com',
+						'Referer':'http://paperrater.com/free_paper_grader',
+						'X-Csrf-Token': csrf_token,
+						'X-Requested-With':'XMLHttpRequest',
+					},
+					onload: function(response) {
+						if (response.responseText) {
+							var ticket_id = response.responseText.match(/style=\\"display:none\\">([^<]*)</);
+							if (ticket_id === null || ticket_id.length != 2) {
+								iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+								in_process_paperrater = false;
+								return;
+							}
+							ticket_id = ticket_id[1];
+							
+							// Orignial PaperRater waits at least 8 seconds or so. We will wait 2 seconds before checking the status of submission.
+							setTimeout(function(){plagiarism_check_status_check(csrf_token, ticket_id);}, 3000);
+						} else {
+							iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+						}
+						in_process_paperrater = false;
+					},
+					onerror: function(response)
+					{
+						iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+						in_process_paperrater = false;
+					}
+				});
+			} else {
+				iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+			}
+			in_process_paperrater = false;
+		},
+		onerror: function(response)
+		{
+			iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+			in_process_paperrater = false;
+		}
+	});
+
+}
+
+function plagiarism_check_status_check(csrf_token, ticket_id) {
+	console.log(csrf_token, ticket_id);
+	GM_xmlhttpRequest({
+		method: "GET",
+		url: 'http://paperrater.com/ticket/' + ticket_id,
+		headers: {
+			'Referer':'http://paperrater.com/free_paper_grader',
+		},
+		onload: function(response) {
+			if (response.responseText) {
+				if (response.responseText.indexOf('Submission was blank') != -1) {
+					setTimeout(function(){plagiarism_check_status_check(csrf_token, ticket_id);}, 2000);
+				} else {
+					GM_openInTab('http://paperrater.com/ticket/' + ticket_id, 1);
+				}
+			} else {
+				iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+			}
+			in_process_paperrater = false;
+		},
+		onerror: function(response)
+		{
+			iWin.messageBox('<span style="color:red">Request to PaperRater API had failed</span>', {title:'PaperRater Check', timeout:5000});
+			in_process_paperrater = false;
+		}
+	});
+}
+
 var settings = null;
 
 {
@@ -935,6 +1087,11 @@ function gather_course_data()
 {
 	document.getElementById('uope-s-student-data-status').innerText = 'Gathering Data...';
 	in_process_gather_student_datagather_course_data_in_process = true;
+	// Reset settings
+	settings.student_data = {};
+	settings.student_data.name = "";
+	settings.student_data.profileId = 0;
+	settings.student_data.courses = [];
 	gather_course_data_general();
 }
 
@@ -987,7 +1144,7 @@ function gather_course_data_course(i)
 				return;
 			}
 			var group = response.responseText.match(/Group ([A-Z])(?:<\/a>)?<\/dd>/);
-			if (group.length == 2) {
+			if (group != null && group.length == 2) {
 				settings.student_data.courses[i].group = group[1];
 			}
 			if ((i + 1) < settings.student_data.courses.length) {
@@ -1154,15 +1311,32 @@ function format_time_period(time, color = true)
     d = time;
 	
     if (d) {
-        h = Math.round(h + m / 60 + s / 60 / 60);
+		h = Math.round(h + m / 60 + s / 60 / 60);
         if (h == 24) {d++; h = 0;}
-        return d + ' days ' + h + ' hours';
+		
+		var ret = '';
+		if (d == 1) ret += '1 day'; else ret += ' ' + d + ' days';
+		if (h == 1) ret += ' 1 hour'; else if (h > 1) ret += ' ' + h + ' hours';
+		
+        return ret;
     } else if (h) {
         m = Math.round(m + s / 60);
         if (m == 60) {h++; m = 0;}
-        return (color ? '<span style="color:#DD0">' : '') + h + ' hours ' + m + ' min' + (color ? '</span>' : '');
+		
+		var ret = (color ? '<span style="color:#DD0">' : '');
+		if (h == 1) ret += ' 1 hour'; else ret += ' ' + h + ' hours';
+		if (m == 1) ret += ' 1 minute'; else if (m > 1) ret += ' ' + m + ' minutes';	
+		ret += (color ? '</span>' : '');
+		
+		return ret;
     } else {
-        return (color ? '<span style="color:#D00">' : '') + m + ' min ' + s + 'sec' + (color ? '</span>' : '');
+		var ret = (color ? '<span style="color:#D00">' : '');
+		
+		if (m == 1) ret += ' 1 minute'; else ret += ' ' + m + ' minutes';
+		if (s == 1) ret += ' 1 second'; else if (s > 1) ret += ' ' + s + ' seconds';
+		
+		ret += (color ? '</span>' : '');
+		return ret;
     }
 }
 function time_window_output_date(date)
