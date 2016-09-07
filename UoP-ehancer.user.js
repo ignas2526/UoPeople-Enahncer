@@ -39,7 +39,7 @@
 
 /*
  * Changelog
- * 0.3.0 2016.
+ * 0.3.0 2016.09.07
  * Added PaperRater.
  * Fixes in Student Data gathering.
  * Fixes and visual improvements in embedded Forums.
