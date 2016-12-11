@@ -457,6 +457,7 @@ window.addEventListener('DOMContentLoaded', function()
 	uop_time_init();
 
 	GM_addStyle(
+		".winb, .winbt, .winbb, .winbbt, .winbc{box-sizing:border-box;}"+
 		".nse{-moz-user-select:-moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none}"+
 		".winb{overflow:hidden;position:fixed;border:1px solid #003;border-radius:2px;background:#FDFDFD;}"+
     	".winbt{display:block;border:solid #003;border-width:0px 0px 1px 0px;font-size:15px;cursor:move}"+
