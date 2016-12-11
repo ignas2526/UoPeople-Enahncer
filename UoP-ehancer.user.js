@@ -355,14 +355,15 @@ iWin.toFront = function(wID)
 
 iWin.drag = function(wID, e)
 {
+	var evt = e || window.event;
 	if (iWin.dragObj != -1) iWin.MoveStop(); // prevent multiple drags
 	iWin.dragwID = wID;
 	iWin.dragObj = iWin.win[wID].obj;
 	
-	iWin.dragMouseX = e.clientX; iWin.dragMouseY = e.clientY;
-    iWin.dragSTop = iWin.dragObj.offsetTop; iWin.dragSLeft = iWin.dragObj.offsetLeft;
+	iWin.dragMouseX = evt.clientX; iWin.dragMouseY = evt.clientY;
+	iWin.dragSTop = iWin.dragObj.offsetTop; iWin.dragSLeft = iWin.dragObj.offsetLeft;
 
-	document.body.className = 'nse';
+	document.body.classList.add('nse');
 	document.addEventListener('mousemove', iWin.dragM);
 	document.addEventListener('mouseup', iWin.MoveStop);
 	document.addEventListener('blur', iWin.MoveStop);
@@ -372,15 +373,16 @@ iWin.drag = function(wID, e)
 
 iWin.resize = function(wID, e)
 {
+	var evt = e || window.event;
 	if (iWin.dragObj != -1) iWin.MoveStop(); // prevent multiple drags
 	iWin.dragwID = wID;
 	iWin.dragObj = iWin.win[wID].obj;
 
-	iWin.dragMouseX = e.clientX; iWin.dragMouseY = e.clientY;
+	iWin.dragMouseX = evt.clientX; iWin.dragMouseY = evt.clientY;
 	iWin.resizeWidth = iWin.win[wID].contentWidth + (iWin.win[wID].contentScroll ? iWin.scroll_length : 0);
-  iWin.resizeHeight = iWin.win[wID].contentHeight;
+	iWin.resizeHeight = iWin.win[wID].contentHeight;
 
-	document.body.className = 'nse';
+	document.body.classList.add('nse');
 	document.addEventListener('mousemove', iWin.resizeM);
 	document.addEventListener('mouseup', iWin.MoveStop);
 	document.addEventListener('blur', iWin.MoveStop);
@@ -424,7 +426,7 @@ iWin.MoveStop2 = function(e)
 
 iWin.MoveStop = function()
 {
-	document.body.className = '';
+	document.body.classList.remove('nse');
 	document.removeEventListener('mousemove', iWin.resizeM);
 	document.removeEventListener('mousemove', iWin.dragM);
 	document.removeEventListener('mouseup', iWin.MoveStop);
