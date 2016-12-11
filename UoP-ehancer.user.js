@@ -484,7 +484,7 @@ window.onfocus = function()
 function UoPE_menu_init()
 {
 	GM_addStyle(
-		"#uope_menu{position:fixed; margin:0; padding:3px; display:block; top:0; right:0; cursor:pointer; z-index:100;" +
+		"#uope_menu{position:fixed; margin:0; padding:3px 4px; display:block; top:0; right:0; cursor:pointer; z-index:100;" +
 		"border-radius:2px;font-size:20px;color:#fff;background:rgba(0,0,0,.7);}" +
 		"#uope_menu > *{cursor:pointer}" +
 		".uope_menu_mt{text-align:right}" +
@@ -495,7 +495,7 @@ function UoPE_menu_init()
 	);
 	var menu = document.createElement('div');
 	menu.id = 'uope_menu';
-	menu.innerHTML = '<div class="uope_menu_mt">UoP Enhancer</div><div class=\"uope_menu_mm\"></div>';
+	menu.innerHTML = '<div class="uope_menu_mt"><i class="fa fa-bars"> </i></div><div class=\"uope_menu_mm\"></div>';
 	document.body.appendChild(menu);
 	
 	var menu_itm;
