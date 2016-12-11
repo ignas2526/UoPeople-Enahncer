@@ -4,8 +4,8 @@
 // @namespace   ignas2526_uopeople_moodle_enhancer
 // @description Enhances UoPeople Moodle
 // @version     0.3.0
-// @downloadURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.user.js
-// @updateURL https://raw.githubusercontent.com/Ignas2526/UoP-Enahncer/master/UoP-ehancer.meta.js
+// @downloadURL https://raw.githubusercontent.com/Ignas2526/UoPeople-Enahncer/master/UoP-ehancer.user.js
+// @updateURL https://raw.githubusercontent.com/Ignas2526/UoPeople-Enahncer/master/UoP-ehancer.meta.js
 // @run-at document-start
 // @include     http://my.uopeople.edu/*
 // @include     https://my.uopeople.edu/*
