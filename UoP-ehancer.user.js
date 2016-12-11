@@ -890,12 +890,12 @@ function open_paperrater_window()
 
   iWin.show(wID);
   if (!window_exists) {
-    document.getElementById('paperrater-analyze').onclick = plagiarism_check;
+    document.getElementById('paperrater-analyze').onclick = paperrater_check;
   }
 }
 
 var in_process_paperrater = false;
-function plagiarism_check()
+function paperrater_check()
 {
 	if (in_process_paperrater) return;
 	in_process_paperrater = true;
@@ -916,7 +916,6 @@ function plagiarism_check()
 					return;
 				}
 				csrf_token = csrf_token[1];
-				console.log(csrf_token);
 				data = document.getElementById('paperrater-text').value;
 				GM_xmlhttpRequest({
 					method: "POST",
@@ -975,7 +974,8 @@ function plagiarism_check()
 
 }
 
-function plagiarism_check_status_check(csrf_token, ticket_id) {
+function plagiarism_check_status_check(csrf_token, ticket_id)
+{
 	console.log(csrf_token, ticket_id);
 	GM_xmlhttpRequest({
 		method: "GET",
