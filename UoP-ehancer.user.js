@@ -145,10 +145,10 @@ iWin.create = function(param, wID)
 	iWin.win[wID].onclose = typeof param.onclose == 'function' ? param.onclose : function(){};
 	iWin.win[wID].onrefresh = typeof param.onrefresh == 'function' ? param.onrefresh : function(){};
 
-	iWin.win[wID].obj.addEventListener('mousedown', function(e) {iWin.toFront(wID);}, 0);
-	iWin.win[wID].obj.children[0].addEventListener('mousedown', function(e) {iWin.drag(wID, e);}, 0);
-	iWin.win[wID].obj.children[0].children[0].addEventListener('mousedown', function(e) {iWin.win[wID].onclose(wID, e);}, 0);
-	iWin.win[wID].obj.children[3].addEventListener('mousedown', function(e) {iWin.resize(wID, e);}, 0);
+	iWin.win[wID].obj.addEventListener('mousedown', function(){iWin.toFront(wID);}, true);
+	iWin.win[wID].obj.children[0].addEventListener('mousedown', function(e) {iWin.drag(wID, e);}, true);
+	iWin.win[wID].obj.children[0].children[0].addEventListener('mousedown', function(e) {iWin.win[wID].onclose(wID, e);}, true);
+	iWin.win[wID].obj.children[3].addEventListener('mousedown', function(e) {iWin.resize(wID, e);}, true);
 
 	iWin.win[wID].contentWidth = 0;
 	iWin.win[wID].contentHeight = 0;
@@ -158,13 +158,15 @@ iWin.create = function(param, wID)
 	return true;
 }
 
-iWin.destroy = function(wID)
+iWin.destroy = function(wID, e)
 {
 	if (typeof iWin.win[wID] == 'undefined') return false;
+	var evt = e || window.event;
+	
 	iWin.zRemove(wID);
 	document.body.removeChild(iWin.win[wID].obj);
 	delete iWin.win[wID];
-	if (typeof event != 'undefined') event.stopPropagation();
+	if (evt) evt.stopPropagation();
 	return true;
 }
 
@@ -364,10 +366,10 @@ iWin.drag = function(wID, e)
 	iWin.dragSTop = iWin.dragObj.offsetTop; iWin.dragSLeft = iWin.dragObj.offsetLeft;
 
 	document.body.classList.add('nse');
-	document.addEventListener('mousemove', iWin.dragM);
-	document.addEventListener('mouseup', iWin.MoveStop);
-	document.addEventListener('blur', iWin.MoveStop);
-	document.addEventListener('mouseout', iWin.MoveStop2);
+	document.addEventListener('mousemove', iWin.dragM, true);
+	document.addEventListener('mouseup', iWin.MoveStop, true);
+	document.addEventListener('blur', iWin.MoveStop, true);
+	document.addEventListener('mouseout', iWin.MoveStop2, true);
 	return true;
 }
 
@@ -383,10 +385,10 @@ iWin.resize = function(wID, e)
 	iWin.resizeHeight = iWin.win[wID].contentHeight;
 
 	document.body.classList.add('nse');
-	document.addEventListener('mousemove', iWin.resizeM);
-	document.addEventListener('mouseup', iWin.MoveStop);
-	document.addEventListener('blur', iWin.MoveStop);
-	document.addEventListener('mouseout', iWin.MoveStop2);
+	document.addEventListener('mousemove', iWin.resizeM, true);
+	document.addEventListener('mouseup', iWin.MoveStop, true);
+	document.addEventListener('blur', iWin.MoveStop, true);
+	document.addEventListener('mouseout', iWin.MoveStop2, true);
 	return true;
 }
 
@@ -427,11 +429,11 @@ iWin.MoveStop2 = function(e)
 iWin.MoveStop = function()
 {
 	document.body.classList.remove('nse');
-	document.removeEventListener('mousemove', iWin.resizeM);
-	document.removeEventListener('mousemove', iWin.dragM);
-	document.removeEventListener('mouseup', iWin.MoveStop);
-	document.removeEventListener('blur', iWin.MoveStop);
-	document.removeEventListener('mouseout', iWin.MoveStop2);
+	document.removeEventListener('mousemove', iWin.resizeM, true);
+	document.removeEventListener('mousemove', iWin.dragM, true);
+	document.removeEventListener('mouseup', iWin.MoveStop, true);
+	document.removeEventListener('blur', iWin.MoveStop, true);
+	document.removeEventListener('mouseout', iWin.MoveStop2, true);
 	iWin.dragObj = -1;
 
 	if (document.selection && document.selection.empty) {document.selection.empty();}else if (window.getSelection) {window.getSelection().removeAllRanges();}
@@ -441,14 +443,14 @@ iWin.messageBox = function(msg, params, _wID)
 {
 	// TOOD: _wID will be used in future for modal messageBox
 	var wID = 'iAlert' + new Date().getTime();
-	iWin.create({title: params.title, onclose:function(){iWin.destroy(wID);}}, wID);
+	iWin.create({title: params.title, onclose:function(wID, e){iWin.destroy(wID, e);}}, wID);
 	iWin.setContent(msg, true, wID);
 	iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
 	iWin.show(wID);
 	iWin.toFront(wID);
 	iWin.show(wID);
 	if (typeof params.timeout != 'undefined')
-		setTimeout(function(){iWin.destroy(wID);}, parseInt(params.timeout, 10));
+		setTimeout(function(e){iWin.destroy(wID, e);}, parseInt(params.timeout, 10));
 	return true;
 };
 
@@ -711,7 +713,7 @@ function show_possibly_logged_out_warning()
 {
   invisible_overlay_obj.style.display = 'none';
   var wID = 'inactivityWarn';
-  iWin.create({title: 'Inactivity Warning', onclose:function(){iWin.destroy(wID);}}, wID);
+  iWin.create({title: 'Inactivity Warning', onclose:function(wID, e){iWin.destroy(wID, e);}}, wID);
   iWin.setContent('You had this page open for ' + format_time_period(new Date().getTime() - time_when_page_loaded, false) + '.<br>' +
                   'There\'s a chance that Moodle logged you out automatically.<br>' +
 				  'If you are in any form (e.g. learning journal, forum reply, PM),<br>' +
@@ -740,7 +742,7 @@ setTimeout(function(){
 function open_grammarly_window()
 {
   var wID = 'grammarlyWindowID';
-  var window_exists = !iWin.create({title: 'Grammarly Text Check', onclose:function(){iWin.destroy(wID);}}, wID);
+  var window_exists = !iWin.create({title: 'Grammarly Text Check', onclose:function(wID, e){iWin.destroy(wID, e);}}, wID);
   iWin.setContent('<div id="plagiarism_check_responce" style="overflow-y:scroll"><strong>Plagiarism</strong><br><strong>Contextual Spelling</strong><br><strong>Grammar</strong><br><strong>Punctuation</strong><br><strong>Sentence Structure</strong><br><strong>Style</strong><br><strong>Vocabulary enhancement</strong><br>' +
                   '</div><textarea rows="8" cols="50" id="plagiarism_check_text"></textarea><br>' +
                   '<input type="button" id="plagiarism_check" value="Check">', true, wID);
@@ -885,7 +887,7 @@ var grammarly_check_values = [{
 function open_paperrater_window()
 {
   var wID = 'paperraterWindowID';
-  var window_exists = !iWin.create({title: 'PaperRater Check', onclose:function(){iWin.destroy(wID);}}, wID);
+  var window_exists = !iWin.create({title: 'PaperRater Check', onclose:function(wID, e){iWin.destroy(wID);}}, wID);
   iWin.setContent('<textarea rows="8" cols="50" id="paperrater-text"></textarea><br>' +
                   '<input type="button" id="paperrater-analyze" value="Check">', true, wID);
   iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
@@ -1030,7 +1032,7 @@ var settings = null;
 function open_settings_window()
 {
 	var wID = 'UoPE-Settings';
-	iWin.create({title: 'UoP Enhancer Settings', onclose:function(){iWin.destroy(wID);}}, wID);
+	iWin.create({title: 'UoP Enhancer Settings', onclose:function(wID, e){iWin.destroy(wID, e);}}, wID);
 	iWin.setContent('<div data-id=\"login\"><strong>One Click Login</strong><br>'+
 					'Warning: do not use this feature on a non-private computer.<br>'+
 					'Your username and pasword will be stored in the browser.<br>'+
@@ -1369,7 +1371,7 @@ function time_window_update()
 function open_events_window()
 {
   var wID = 'UoPE-Events';
-  iWin.create({title: 'Events', onclose:function(){window.clearInterval(time_window_interval);iWin.destroy(wID);}}, wID);
+	iWin.create({title: 'Events', onclose:function(wID, e){window.clearInterval(time_window_interval);iWin.destroy(wID);}}, wID);
   iWin.setContent('<div id="uope-time-plan" style="min-width:400px;min-height:50px"></div>', true, wID);
   iWin.setPosition(60, (window.innerWidth / 2) - 20, wID);
   time_window_update();
